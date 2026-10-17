@@ -74,6 +74,24 @@ live instance: read [docs/kili_uncertainties.md](docs/kili_uncertainties.md) fir
 Every annotation lands in `data/annotations/round_<N>.jsonl`, the single source
 of truth. Only `reviewed` and `blind` records count as gold.
 
+## Optimizing the prompt with GEPA
+
+New to GEPA? Read [docs/gepa_guide.md](docs/gepa_guide.md), then run the 2-iteration
+walkthrough [notebooks/gepa_walkthrough.ipynb](notebooks/gepa_walkthrough.ipynb)
+(`uv run --with jupyter jupyter lab`, or open it in VS Code; it costs a few cents and
+uses a separate, clearly labelled demo store, never `data/annotations/`).
+
+```bash
+uv run vex optimize                          # seed = latest prompts/bootstrap-r*, else the schema seed
+uv run vex optimize --max-metric-calls 100   # smaller budget
+uv run vex optimize --resume runs/<dir>      # continue an interrupted run
+```
+
+GEPA trains on `gepa_train` ∩ gold and selects on `gepa_pareto` ∩ gold. After it finishes,
+the seed, the best and the top Pareto candidates are scored on `heldout_blind` (and the Mac
+stand-in `heldout_standin`), the only place those splits are used besides `vex report`.
+Outputs: `runs/<timestamp>-optimize-<hash>/` and `prompts/gepa-best.<hash>.json`.
+
 ## Tests
 
 ```bash

@@ -321,6 +321,18 @@ note in the commit message body, and **one local commit**. No push.
   `gepa.optimize` nor the diagnostic or reflection models (spy on the client), and an
   end-to-end `gepa.optimize` with a fake client (2 iterations, deterministic).
 
+**P5 as built (2026-10-17):**
+- `vex optimize` runs `gepa.optimize` with `VexAdapter`, `ErrorDrivenSelector`, a cost-tracked
+  `ReflectionLM`, a `BudgetStopper` and a `RunRecorder` callback (iterations, proposals,
+  candidates). New config key `budget.heldout_reserve_usd`: GEPA stops at `max_usd − reserve`,
+  and held-out scoring uses the reserve, so it is never skipped for lack of budget.
+- The `rounds.csv` row is written by P6's tracking, from `heldout.json`.
+- End-to-end test: `gepa.optimize` against a fake model finds the fix; held-out documents
+  never reach the diagnostic or reflection models, nor the extractor before GEPA ends.
+- Notebook run live on the demo store (5 docs, ~$0.02). It shows a real accepted rewrite, a
+  valset too small to separate candidates (best stays the seed), and 4 skipped iterations
+  once the trainset is perfect (each still costing 3 metric calls).
+
 ### P6 — Active learning and tracking
 - `signals.py`: (a) field-level disagreement across the top-K Pareto candidates;
   (b) N passes at `temperature > 0` (sample_index in the cache key) + extractor-vs-Haiku

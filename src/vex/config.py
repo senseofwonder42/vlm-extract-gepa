@@ -99,9 +99,15 @@ class CacheConfig(_Strict):
 
 
 class BudgetConfig(_Strict):
-    """Spending limit for one run."""
+    """Spending limit for one run.
+
+    Attributes:
+        max_usd: Hard limit for the whole run.
+        heldout_reserve_usd: Part of `max_usd` kept for held-out scoring after GEPA.
+    """
 
     max_usd: float
+    heldout_reserve_usd: float = 0.5
 
 
 class PathsConfig(_Strict):

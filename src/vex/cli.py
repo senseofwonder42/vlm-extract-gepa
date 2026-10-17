@@ -40,6 +40,7 @@ from vex.llm.cost import CostTracker
 from vex.metric.report import build_report
 from vex.logs import setup_logging
 from vex.prompt import Candidate, load_candidate, save_candidate, seed_candidate
+from vex.optimize import run_optimize
 from vex.runs import create_run_dir
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help=__doc__)
@@ -390,3 +391,50 @@ def eval_command(
     (run_dir / "cost.json").write_text(json.dumps(tracker.summary(), indent=2), encoding="utf-8")
     typer.echo(report.table())
     typer.echo(f"cost ${tracker.total_usd:.4f} — details in {run_dir}")
+
+
+def _latest_bootstrap_candidate() -> Candidate:
+    saved = sorted(state.config.paths.prompts.glob("bootstrap-r*.json"),
+                   key=lambda p: (int(p.name.split(".")[0].removeprefix("bootstrap-r")), p.stat().st_mtime))
+    if saved:
+        typer.echo(f"Seed candidate: {saved[-1]}")
+        return load_candidate(saved[-1])
+    typer.echo("Seed candidate: schema seed (no bootstrap candidate found)")
+    return seed_candidate()
+
+
+@app.command()
+def optimize(
+    candidate_path: Annotated[
+        Path | None, typer.Option("--candidate", help="Seed candidate (default: latest bootstrap-r*, else seed).")
+    ] = None,
+    max_metric_calls: Annotated[
+        int | None, typer.Option(help="Override gepa.max_metric_calls.")
+    ] = None,
+    resume: Annotated[
+        Path | None, typer.Option(help="Existing run directory to resume (GEPA reloads its saved state).")
+    ] = None,
+) -> None:
+    """Optimize the prompt with GEPA, then score it on held-out documents."""
+    config = state.config
+    if max_metric_calls is not None:
+        config = config.model_copy(update={"gepa": config.gepa.model_copy(update={"max_metric_calls": max_metric_calls})})
+        state.config = config
+    seed = load_candidate(candidate_path) if candidate_path else _latest_bootstrap_candidate()
+    if resume is not None:
+        if not (resume / "gepa").exists():
+            raise typer.BadParameter(f"{resume} has no gepa/ state to resume")
+        run_dir = resume
+        setup_logging(log_file=run_dir / "log.txt")
+    else:
+        run_dir = create_run_dir(config, "optimize")
+    try:
+        outcome = run_optimize(config, Settings(), seed, run_dir, use_cache=state.use_cache)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"Best candidate: {outcome.best_path}")
+    for split, data in outcome.heldout.items():
+        scores = ", ".join(f"{name}={r['global_score']:.3f}" for name, r in data["scores"].items()) or "not scored"
+        typer.echo(f"{split} ({data['n']} docs): {scores}")
+    budget_note = " (stopped by the budget guard)" if outcome.stopped_by_budget else ""
+    typer.echo(f"Cost ${outcome.total_usd:.4f}{budget_note}. Run directory: {run_dir}")
