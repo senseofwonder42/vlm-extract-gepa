@@ -10,6 +10,7 @@ optimized prompt are built side by side, round after round, guided by evaluation
 - GEPA explained for beginners: [docs/gepa_guide.md](docs/gepa_guide.md) and
   [notebooks/gepa_walkthrough.ipynb](notebooks/gepa_walkthrough.ipynb)
 - Kili (work) checklist: [docs/kili_uncertainties.md](docs/kili_uncertainties.md)
+- Documentation détaillée en français : [docs/fr/](docs/fr/README.md)
 
 ## Setup
 
