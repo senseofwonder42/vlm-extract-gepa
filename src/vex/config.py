@@ -214,7 +214,7 @@ class DiversityConfig(_Strict):
 
     enabled: bool
     n_clusters: int
-    embedder: Literal["auto", "fastembed", "thumbnail"]
+    embedder: Literal["auto", "onnx", "thumbnail"]
 
 
 class ActiveConfig(_Strict):
@@ -227,6 +227,7 @@ class ActiveConfig(_Strict):
     diversity: DiversityConfig
     random_confident_fraction: float
     batch_size: int
+    max_pool: int = 60
 
 
 class TrackingConfig(_Strict):

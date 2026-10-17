@@ -184,3 +184,12 @@ async def test_concurrent_first_calls_probe_endpoints_once(config):
         await asyncio.gather(*(client.complete_json("extractor", [{"role": "user", "content": str(i)}],
                                                     AttestationAuto, strict_json_schema()) for i in range(5)))
     assert probes == 1
+
+
+async def test_extra_params_override_role_params_and_change_the_cache_key(make_client, fake_openrouter):
+    fake_openrouter.queue += [chat_response("a"), chat_response("b")]
+    async with make_client() as client:
+        await client.complete("extractor_eval", MESSAGES)
+        second = await client.complete("extractor_eval", MESSAGES, extra_params={"temperature": 0.9})
+    assert fake_openrouter.chat_requests[0]["temperature"] == 0.0
+    assert fake_openrouter.chat_requests[1]["temperature"] == 0.9 and second.content == "b"

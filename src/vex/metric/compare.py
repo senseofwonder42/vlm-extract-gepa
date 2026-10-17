@@ -102,6 +102,19 @@ def _normalize(kind: FieldKind, value: JsonValue) -> str | frozenset[str] | None
     return normalize_text(text)
 
 
+def normalize_field(field: str, value: JsonValue) -> str | frozenset[str] | None:
+    """Normalize a value with its field's normalizer (the metric's notion of equality).
+
+    Args:
+        field: Field name.
+        value: Raw value.
+
+    Returns:
+        Canonical value, or `None` if empty.
+    """
+    return _normalize(FIELD_KINDS[field], value)
+
+
 def set_f1(gold: frozenset[str], pred: frozenset[str]) -> float:
     """F1 between two non-empty sets.
 

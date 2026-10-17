@@ -157,7 +157,10 @@ active:
   top_k_candidates: 3
   self_consistency: {n: 3, temperature: 0.9}
   verifier_shortlist: 40
+  # embedder: auto = ONNX ResNet50 (Qdrant/resnet50-onnx) if `uv sync --extra embed`, else 32x32 thumbnails.
+  # (fastembed is not usable: its image models need pillow>=10.3, Kili 2.142.1 needs pillow<10.1.)
   diversity: {enabled: true, n_clusters: 8, embedder: auto}
+  max_pool: 60            # unreviewed docs scored per `vex select` (bounds the cost)
   random_confident_fraction: 0.15
   batch_size: 20
 

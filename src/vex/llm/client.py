@@ -177,6 +177,7 @@ class OpenRouterClient:
         response_format: dict | None = None,
         use_cache: bool = True,
         cache_salt: str | None = None,
+        extra_params: dict | None = None,
     ) -> Completion:
         """Send one chat completion for a role.
 
@@ -187,6 +188,8 @@ class OpenRouterClient:
             use_cache: Per-call cache switch.
             cache_salt: Extra cache-key component, e.g. a sample index for
                 self-consistency passes, so repeated samples are not replayed.
+            extra_params: Parameters merged over the role's `params` for this
+                call only (e.g. a sampling temperature); part of the cache key.
 
         Returns:
             The completion.
@@ -196,7 +199,8 @@ class OpenRouterClient:
             LLMError: On a non-retryable error or once retries are exhausted.
         """
         role_config = self.config.role(role)
-        body: dict = {"model": role_config.model, "messages": messages, **role_config.params, **role_config.extra_body}
+        body: dict = {"model": role_config.model, "messages": messages, **role_config.params, **(extra_params or {}),
+                      **role_config.extra_body}
         if response_format is not None:
             body["response_format"] = response_format
         key = cache_key({**body, "_salt": cache_salt})
@@ -312,6 +316,7 @@ class OpenRouterClient:
         schema_name: str = "extraction",
         use_cache: bool = True,
         cache_salt: str | None = None,
+        extra_params: dict | None = None,
     ) -> StructuredResult[T]:
         """Get a reply validated against `model_cls`, with one repair retry.
 
@@ -324,6 +329,7 @@ class OpenRouterClient:
             schema_name: Name given to the schema in `response_format`.
             use_cache: Per-call cache switch.
             cache_salt: See `complete`.
+            extra_params: See `complete`.
 
         Returns:
             The structured result; `parsed` is `None` if both attempts failed.
@@ -339,7 +345,8 @@ class OpenRouterClient:
             messages = _with_schema_instruction(messages, json_schema)
 
         first = await self.complete(
-            role, messages, response_format=response_format, use_cache=use_cache, cache_salt=cache_salt
+            role, messages, response_format=response_format, use_cache=use_cache, cache_salt=cache_salt,
+            extra_params=extra_params,
         )
         parsed, error = parse_json_reply(first.content, model_cls)
         if parsed is not None:
@@ -352,7 +359,8 @@ class OpenRouterClient:
             {"role": "user", "content": REPAIR_PROMPT.format(error=error)},
         ]
         second = await self.complete(
-            role, repair_messages, response_format=response_format, use_cache=use_cache, cache_salt=cache_salt
+            role, repair_messages, response_format=response_format, use_cache=use_cache, cache_salt=cache_salt,
+            extra_params=extra_params,
         )
         parsed, error = parse_json_reply(second.content, model_cls)
         if parsed is None:

@@ -351,6 +351,24 @@ note in the commit message body, and **one local commit**. No push.
 - **Tests:** each signal on hand-built inputs, weight combination, cluster coverage,
   random sample size, CSV schema, plateau detection.
 
+**P6 as built (2026-10-17):**
+- Signals (a)-(d) in `vex.active.signals`, each in [0, 1], combined with `active.weights`
+  over the *available* signals (a missing (a) or (d) is left out, not counted as 0). An
+  unparseable extraction scores 1.0 on rules. Self-consistency samples use the official Qwen
+  temperature override (`active.self_consistency.temperature`) via a per-call `extra_params`.
+- **Diversity embedder changed:** fastembed's image models need `pillow>=10.3`, and Kili 2.142.1
+  pins `pillow<10.1`. The optional `embed` group is instead `onnxruntime` + `huggingface_hub`
+  running the same ResNet50 ONNX export (`Qdrant/resnet50-onnx`, 94 MB) with our own
+  preprocessing; the fallback is 32×32 thumbnails. New key `active.max_pool` (default 60)
+  bounds the cost of `vex select`.
+- The Haiku extraction computed for (b) is reused as the pre-annotation: no extra call.
+- `vex report` scores the current candidate on `heldout_blind`, or `heldout_standin` when
+  the former has no gold (Mac), and upserts `reports/rounds.csv`.
+- **Live (scratch dirs):** `vex select` on 8 docs cost $0.044. On synthetic docs almost every
+  signal is 0 (samples, Haiku, rules and verifier all agree), so selection is driven by
+  diversity: uncertainty sampling needs real, messier documents to discriminate. `vex report`
+  scored a blind-annotated stand-in doc and wrote the CSV row.
+
 ---
 
 ## 4. Config schema (`configs/default.yaml`)

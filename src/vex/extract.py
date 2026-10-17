@@ -77,6 +77,7 @@ async def extract_document(
     *,
     use_cache: bool = True,
     cache_salt: str | None = None,
+    extra_params: dict | None = None,
 ) -> ExtractionResult:
     """Extract the fields of one document with a candidate prompt.
 
@@ -87,6 +88,8 @@ async def extract_document(
         role: Role to use.
         use_cache: Per-call cache switch.
         cache_salt: Extra cache-key component (self-consistency sample index).
+        extra_params: Parameters merged over the role's params for this call
+            (e.g. the self-consistency temperature).
 
     Returns:
         The extraction result; never raises on invalid model output.
@@ -96,7 +99,7 @@ async def extract_document(
     messages = build_messages(rendered.system, document, render_config.dpi, render_config.max_pages)
     result = await client.complete_json(
         role, messages, AttestationAuto, rendered.json_schema,
-        schema_name="attestation_auto", use_cache=use_cache, cache_salt=cache_salt,
+        schema_name="attestation_auto", use_cache=use_cache, cache_salt=cache_salt, extra_params=extra_params,
     )
     return ExtractionResult(
         document=str(document),

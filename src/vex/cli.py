@@ -6,6 +6,7 @@ Global options come before the command::
 """
 
 import asyncio
+from datetime import date
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -37,11 +38,29 @@ from vex.evaluate import score_candidate
 from vex.extract import extract_document
 from vex.llm.client import OpenRouterClient
 from vex.llm.cost import CostTracker
+from vex.llm.sync import BackgroundLoop
 from vex.metric.report import build_report
 from vex.logs import setup_logging
-from vex.prompt import Candidate, load_candidate, save_candidate, seed_candidate
-from vex.optimize import run_optimize
+from vex.prompt import Candidate, candidate_hash, load_candidate, save_candidate, seed_candidate
+from vex.optimize import run_optimize, score_heldout
+from vex.active.select import (
+    build_pool,
+    compute_signals,
+    current_candidates,
+    plan_batch,
+    push_selection,
+    selection_report,
+)
 from vex.runs import create_run_dir
+from vex.tracking import (
+    build_row,
+    cumulative_usd,
+    fields_corrected_share,
+    load_rows,
+    median_review_seconds,
+    suspect_count,
+    upsert_row,
+)
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help=__doc__)
 config_app = typer.Typer(no_args_is_help=True, help="Inspect the configuration.")
@@ -438,3 +457,81 @@ def optimize(
         typer.echo(f"{split} ({data['n']} docs): {scores}")
     budget_note = " (stopped by the budget guard)" if outcome.stopped_by_budget else ""
     typer.echo(f"Cost ${outcome.total_usd:.4f}{budget_note}. Run directory: {run_dir}")
+
+
+@app.command()
+def select(
+    round_number: Annotated[int | None, typer.Option("--round", help="New round number (default: last + 1).")] = None,
+    size: Annotated[int | None, typer.Option(help="Override active.batch_size.")] = None,
+) -> None:
+    """Score the unreviewed pool for uncertainty, pick a diverse batch, push it pre-annotated."""
+    config, paths = state.config, state.config.paths
+    if size is not None:
+        config = config.model_copy(update={"active": config.active.model_copy(update={"batch_size": size})})
+    splits, store = _load_splits_or_fail(), AnnotationStore(paths.annotations)
+    new_round = round_number or max((r.round for r in store.records()), default=0) + 1
+    pool = build_pool(load_registry(paths.registry), splits, store, config.active.max_pool, config.splits.seed)
+    if not pool:
+        raise typer.BadParameter("No unannotated document left in the GEPA buckets.")
+    candidates = current_candidates(config, config.active.top_k_candidates)
+    run_dir = create_run_dir(config, f"select-r{new_round}")
+    tracker = CostTracker(config.budget.max_usd)
+    typer.echo(f"Scoring {len(pool)} pool document(s) with {len(candidates)} candidate(s)...")
+
+    async def run():
+        async with _make_client(tracker) as client:
+            return await compute_signals(client, pool, candidates, config, date.today())
+
+    signals = asyncio.run(run())
+    selections = plan_batch(signals, config, config.splits.seed + new_round)
+    (run_dir / "selection.json").write_text(json.dumps(selection_report(signals, selections), indent=2), "utf-8")
+    (run_dir / "cost.json").write_text(json.dumps(tracker.summary(), indent=2), "utf-8")
+    push_selection(selections, signals, new_round, candidates[0], store, make_backend(config, Settings()), config)
+    by_reason = {reason: sum(s.reason == reason for s in selections) for reason in ("uncertain", "random_confident")}
+    typer.echo(f"Round {new_round}: pushed {len(selections)} document(s) {by_reason} (${tracker.total_usd:.4f}). "
+               f"Details: {run_dir / 'selection.json'}")
+
+
+@app.command()
+def report(
+    round_number: Annotated[int | None, typer.Option("--round", help="Round to report (default: last).")] = None,
+    candidate_path: Annotated[
+        Path | None, typer.Option("--candidate", help="Candidate to score (default: current best).")
+    ] = None,
+) -> None:
+    """Score the current candidate on held-out, update reports/rounds.csv, flag a plateau."""
+    config, paths = state.config, state.config.paths
+    splits, store = _load_splits_or_fail(), AnnotationStore(paths.annotations)
+    round_number = round_number if round_number is not None else max((r.round for r in store.records()), default=0)
+    candidate = load_candidate(candidate_path) if candidate_path else current_candidates(config, 1)[0]
+    run_dir = create_run_dir(config, f"report-r{round_number}")
+    tracker = CostTracker(config.budget.max_usd)
+    loop = BackgroundLoop()
+    client = _make_client(tracker)
+    registry = {r.doc_id: r for r in load_registry(paths.registry)}
+    try:
+        heldout = score_heldout(client, loop, {"current": candidate}, splits, store, registry)
+    finally:
+        loop.run(client.aclose())
+        loop.close()
+    (run_dir / "heldout.json").write_text(json.dumps(heldout, indent=2), "utf-8")
+    (run_dir / "cost.json").write_text(json.dumps(tracker.summary(), indent=2), "utf-8")
+    csv_path = paths.reports / "rounds.csv"
+    previous = [r for r in load_rows(csv_path) if int(r["round"]) < round_number]
+    row = build_row(
+        round_number, candidate_hash(candidate), heldout,
+        len(effective_split("gepa_train", splits, store)), len(effective_split("gepa_pareto", splits, store)),
+        fields_corrected_share(store, round_number, config.metric), median_review_seconds(store, round_number),
+        suspect_count(paths.review_queue), cumulative_usd(paths.runs), previous,
+        config.tracking.plateau_delta, config.tracking.plateau_rounds,
+    )
+    rows = upsert_row(csv_path, row)
+    shown = ("round", "heldout_split", "heldout_n", "heldout_global", "n_gold_train", "n_gold_pareto",
+             "fields_corrected_share", "median_review_seconds", "suspect_annotations", "usd_round", "plateau")
+    typer.echo("  ".join(f"{c:>14}" for c in shown))
+    for r in rows:
+        typer.echo("  ".join(f"{r[c]:>14}" for c in shown))
+    if row["plateau"] == "True":
+        typer.echo("Plateau: held-out gains stayed below tracking.plateau_delta; consider stopping.")
+    if not row["heldout_global"]:
+        typer.echo("No held-out gold yet: run `vex annotate push-blind`, annotate, then `vex annotate pull --round 0`.")

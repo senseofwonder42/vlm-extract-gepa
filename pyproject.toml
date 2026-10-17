@@ -21,11 +21,18 @@ dependencies = [
     "pymupdf>=1.28.2",
     "pyyaml>=6.0.3",
     "rapidfuzz>=3.14.6",
+    "scikit-learn>=1.9.1",
     "typer>=0.27.3",
 ]
 
 [project.scripts]
 vex = "vex.cli:app"
+
+[project.optional-dependencies]
+embed = [
+    "huggingface-hub>=2.2.0",
+    "onnxruntime>=1.31.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12.0"]
