@@ -1,0 +1,36 @@
+{# White international motor insurance card (Council of Bureaux box layout, black on white since 2020). #}
+{% set cell = "border: 1px solid black; padding: 4px; font-size: 9px;" %}
+<table style="border-collapse: collapse;">
+  <tr>
+    <td style="{{ cell }} width: 250px;">1. CARTE INTERNATIONALE D'ASSURANCE AUTOMOBILE<br/>1. INTERNATIONAL MOTOR INSURANCE CARD</td>
+    <td style="{{ cell }} width: 240px;">2. ÉMISE AVEC L'AUTORISATION DU BUREAU CENTRAL FRANÇAIS</td>
+  </tr>
+  <tr>
+    <td style="{{ cell }}">3. VALABLE
+      <table style="border-collapse: collapse;"><tr>
+        <td style="width: 35px; font-size: 8px;">DU Jour</td><td style="width: 35px; font-size: 8px;">Mois</td><td style="width: 40px; font-size: 8px;">Année</td>
+        <td style="width: 35px; font-size: 8px;">AU Jour</td><td style="width: 35px; font-size: 8px;">Mois</td><td style="width: 40px; font-size: 8px;">Année</td>
+      </tr><tr>
+        <td style="font-size: 12px;">{{ start_parts[0] }}</td><td style="font-size: 12px;">{{ start_parts[1] }}</td><td style="font-size: 12px;">{{ start_parts[2] }}</td>
+        <td style="font-size: 12px;">{{ end_parts[0] }}</td><td style="font-size: 12px;">{{ end_parts[1] }}</td><td style="font-size: 12px;">{{ end_parts[2] }}</td>
+      </tr></table>
+      (Ces deux dates comprises)</td>
+    <td style="{{ cell }}">4. Code pays / Code assureur / Numéro<br/><span style="font-size: 12px;">F / {{ insurer.code | nobr }} / {{ contract | nobr }}</span></td>
+  </tr>
+  <tr>
+    <td style="{{ cell }}">5. N° d'immatriculation (ou à défaut) N° du châssis ou du moteur<br/><span style="font-size: 12px;">{{ vehicles[0].plate_display | nobr }}</span></td>
+    <td style="{{ cell }}">6. Catégorie du véhicule : A &#160;&#160; 7. Marque du véhicule<br/><span style="font-size: 12px;">{{ vehicles[0].brand | upper | nobr }}</span></td>
+  </tr>
+  <tr>
+    <td colspan="2" style="{{ cell }} font-size: 7px;">8. VALIDITÉ TERRITORIALE — Cette carte est valable pour les pays dont la case n'est pas rayée.
+      A · B · BG · CY · CZ · D · DK · E · EST · F · FIN · GR · H · HR · I · IRL · IS · L · LT · LV · M · N · NL · P · PL · RO · S · SK · SLO · CH · AL · AND · BIH · MA · MD · MK · MNE · SRB · TN · TR · UA · UK</td>
+  </tr>
+  <tr>
+    <td style="{{ cell }}">9. Nom et adresse du souscripteur de la police (ou de l'utilisateur du véhicule)<br/>
+      <span style="font-size: 11px;">{{ holder }}<br/>{{ street }}<br/>{{ postcode }} {{ city }}</span></td>
+    <td style="{{ cell }}">10. Cette carte a été délivrée par :<br/>
+      <img src="logo.png" style="width: 28px;"/> <span style="font-size: 11px;">{{ insurer.name }}</span><br/>
+      <span style="font-size: 7px;">S.A. au capital de {{ capital }} € — {{ rcs }} — Siège : {{ insurer.city }}</span></td>
+  </tr>
+</table>
+<p style="font-size: 7px;">* Catégorie : A. Automobile B. Motocycle C. Camion ou tracteur D. Cycle à moteur auxiliaire E. Autobus F. Remorque G. Autres</p>

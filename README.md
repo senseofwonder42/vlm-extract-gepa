@@ -32,6 +32,21 @@ overridden with `--set dotted.key=value`. Each `extract` run writes
 `runs/<timestamp>-extract-<hash>/` containing the resolved config, its hash,
 the log, `result.json` and `cost.json`.
 
+## Data
+
+```bash
+uv run vex data fetch-specimens   # approved entries of data/specimen_sources.yaml → data/raw/real/
+uv run vex data synth             # 200 seeded synthetic certificates → data/raw/synthetic/
+uv run vex data register          # add new files to data/registry.jsonl (doc_id = sha256)
+uv run vex data split             # frozen assignment in data/splits.yaml
+```
+
+Raw documents are git-ignored. The manifest, registry, splits and the
+generator's `synthetic_meta` (used only by tests and sanity checks, never as labels) are
+committed, so `fetch-specimens` + `synth` rebuild the same files byte-for-byte.
+On the Mac, the `carte_verte` layout is reserved as a held-out stand-in
+(`splits.standin_layouts`); at work, set it to `[]` and add real documents.
+
 ## Tests
 
 ```bash

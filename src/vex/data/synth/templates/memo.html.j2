@@ -1,0 +1,37 @@
+{# Mémo Véhicule Assuré (mandatory since 1 April 2024). App-card style. #}
+<div style="background-color: {{ insurer.color }}; color: white; padding: 10px;">
+  <table style="border-collapse: collapse;"><tr>
+    <td style="width: 60px;"><img src="logo.png" style="width: 48px;"/></td>
+    <td style="width: 260px; font-size: 15px;"><b>{{ insurer.name }}</b></td>
+    <td style="width: 170px; font-size: 11px; text-align: right;">{{ civility }} {{ holder }}</td>
+  </tr></table>
+  <p style="font-size: 20px; margin-top: 12px;"><b>MÉMO VÉHICULE ASSURÉ</b></p>
+  <p style="font-size: 14px;"><b>{{ vehicles[0].brand | upper | nobr }} {{ vehicles[0].model | upper }}</b></p>
+  <p style="font-size: 9px;">IMMATRICULATION</p>
+  <p style="font-size: 16px;"><b>{{ vehicles[0].plate_display | nobr }}</b></p>
+</div>
+<div style="border: 1px solid #999999; padding: 10px;">
+  <p style="font-size: 9px; color: #666666;">VALIDITÉ</p>
+  <p style="font-size: 13px;">Du {{ start | nobr }} au {{ end | nobr }}</p>
+  <table style="border-collapse: collapse; margin-top: 8px;"><tr>
+    <td style="width: 170px; font-size: 9px; color: #666666;">N° DE CONTRAT</td>
+    <td style="width: 160px; font-size: 9px; color: #666666;">ASSUREUR</td>
+    <td style="width: 160px; font-size: 9px; color: #666666;">{% if show_code %}CODE ASSUREUR{% else %}N° SOCIÉTAIRE{% endif %}</td>
+  </tr><tr>
+    <td style="font-size: 12px;">{{ contract | nobr }}</td>
+    <td style="font-size: 12px;">{{ insurer.name }}</td>
+    <td style="font-size: 12px;">{% if show_code %}{{ insurer.code | nobr }}{% else %}{{ member_number | nobr }}{% endif %}</td>
+  </tr></table>
+  {% if show_address %}
+  <p style="font-size: 9px; color: #666666; margin-top: 8px;">ASSURÉ</p>
+  <p style="font-size: 11px;">{{ holder }}<br/>{{ street }}<br/>{{ postcode }} {{ city }}</p>
+  {% endif %}
+  {% if show_guarantees %}
+  <p style="font-size: 9px; color: #666666; margin-top: 8px;">GARANTIES</p>
+  <p style="font-size: 11px;">{{ guarantees | join(" · ") }}</p>
+  {% endif %}
+  <p style="font-size: 9px; color: #666666; margin-top: 8px;">ASSISTANCE 24H/24</p>
+  <p style="font-size: 11px;">{{ phone }}</p>
+</div>
+<p style="font-size: 8px; color: #555555;">Ce mémo vaut présomption d'assurance pendant 15 jours à compter de la date d'effet du contrat.
+En cas d'accident, ces informations vous permettent de remplir le constat amiable. Édité le {{ issued }}.</p>

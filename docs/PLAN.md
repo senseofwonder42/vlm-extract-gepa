@@ -32,6 +32,7 @@ endpoints on 2026-10-17. They are not from memory.
 | Dependency resolution | `kili==2.142.1 + gepa + pymupdf + faker + jinja2 + rapidfuzz + httpx + pydantic-settings + typer + loguru + scikit-learn` resolves on 3.12, as do `+ fastembed` and `+ weasyprint`. | `uv pip compile` dry runs |
 | Domain change | Since **1 April 2024**, French insurers no longer issue the green card and windscreen sticker. They issue a **"Mémo Véhicule Assuré"** (content set by art. R211-14-0-1 Code des assurances). The international card ("carte internationale d'assurance automobile", ex-green card) still exists and is now white. Real documents will mix: old green cards, the new white card, Mémos and free-form "attestations". The field descriptions must cover all four. | matmut.fr, groupama.fr, generali.fr (searched) |
 | P1 live checks (2026-10-17) | `reasoning: {effort: "none"}` alone gives 0 reasoning tokens on Parasail (`chat_template_kwargs` was redundant, so it's dropped). **`min_p` makes Parasail routing fail** (HTTP 404 under `require_parameters`); the card's value 0.0 is neutral, so it's omitted. Haiku with `effort: medium` + strict `json_schema` works; reasoning is adaptive (0–306 tokens observed, 0 on document extraction). Measured: an extractor call costs **$0.0011–0.0013** (~3.5k input tokens per page), ~$0.0006 when the provider prompt cache hits. A Haiku extraction costs **~$0.0009** (~8.3k input tokens per page). | live calls, `vex doctor` |
+| P2 data checks (2026-10-17) | Public specimens: ~3 usable, 1 approved (Leocare Mémo mock-up); the others were excluded for personal data, for being specs rather than certificates, or for blocking bots (Allianz 403). Synthetic set: 200 docs, 5 layouts, 131 scans / 69 clean PDFs, 15 two-page, 10 two-vehicle, 16 rotated ≥ 90°. **Sanity check on 12 scans vs synthetic_meta** (seed prompt): field accuracy 96.7% with `extractor_eval` vs 95.8% with the official params, no parse failures. Q2 is kept for reproducibility; the synthetic set is easy for this model (kept as-is by decision). **Reproducibility:** `kili==2.142.1` was added in P2 (not P4) so Pillow is pinned to 10.0.1 *before* doc_ids are frozen. Pillow 10.0.1's JPEG encoder turned out to be nondeterministic across processes on Apple Silicon (same pixels → different bytes in ~half the runs), so scans are JPEG-encoded by PyMuPDF instead; three full regenerations are byte-identical, and a cross-process regression test guards it. | `vex data *`, scratch scripts |
 | Real specimens | **Scarce.** Insurers generate Mémos per customer in the customer area. No official blank specimen PDF turned up in a first search; most public examples are images inside explainer articles, with unclear licences. See open question Q1: this directly threatens "~15 REAL docs in `heldout_blind`". | web search |
 
 ---
@@ -227,8 +228,8 @@ note in the commit message body, and **one local commit**. No push.
 - `vex data fetch-specimens`: reads `data/specimen_sources.yaml` (curated URLs, each with
   a licence/ToS note), checks `robots.txt` (`urllib.robotparser`), uses a polite
   delay and a custom UA, then downloads into `data/raw/real/` and appends to `manifest.jsonl`.
-  Entries flagged `pii: suspected` are skipped. Every new file gets
-  `pii_check: pending` until you confirm it (`vex data approve-specimen <sha>`).
+  Only entries you set to `status: approved` are fetched (review happens in the YAML, so
+  no separate approve command); `pii: suspected` is refused even if approved.
 - `vex data synth --n 200 --seed 42`: ≥5 layouts, fictional insurers and logos,
   scan augmentation, values → `data/synthetic_meta/<doc_id>.json`. The store
   refuses any record whose annotator is `synthetic_meta`, and a test asserts that
@@ -449,6 +450,10 @@ usd_round, usd_cumulative, plateau`
 - **Effective** splits are computed, not stored: `gepa_train = bucket_train ∩ gold`,
   `gepa_pareto = bucket_pareto ∩ gold`. So the sets grow round by round while
   assignments stay frozen, and an unreviewed doc can never enter them.
+- **Mac stand-in (§9 Q1):** `heldout_standin` holds 15 synthetic documents of a reserved
+  layout (`carte_verte`); the rest of that layout sits in `reserved_unused`. Both are treated
+  exactly like `heldout_blind` by every guard. Layouts come from the file name, never from
+  synthetic_meta.
 - `heldout_blind` is annotated blind (no predictions) and **only ever scored, never
   learned from**. Two read-only entry points may load it: the end of `vex optimize`
   and `vex report` (per-round score of the current candidate, §9 Q5). The adapter,
@@ -513,13 +518,18 @@ makes repeated evaluations of the same (candidate, doc) free.
 
 ## 9. Decisions (approved 2026-10-17)
 
-1. **Real specimens.** Collect what is licence-clear on the Mac (probably 10–20).
-   `heldout_blind` = about half of the real docs, minimum 8, with a low-confidence
-   warning printed whenever it's scored. At work, anonymized company documents are
-   appended to `heldout_blind` and stay on the work machine. No synthetic stand-in in
-   held-out. Images embedded in articles are accepted only from insurer or official
-   sources, with the page URL and a "© source, internal research use" note in the
-   manifest. Blogs, aggregators and anything showing a plausibly real name or plate are skipped.
+1. **Real specimens.** Images embedded in articles are accepted only from insurer or
+   official sources, with the page URL and a "© source, internal research use" note in the
+   manifest; anything showing a plausibly real name or plate is skipped. `heldout_blind`
+   stays real-only: half of the real docs, capped at `heldout_blind_size`, with a
+   low-confidence warning below 8. **Update (P2, 2026-10-17):** public research found
+   only ~3 usable specimens, and only the Leocare Mémo mock-up was approved. So on the Mac
+   `heldout_blind` is empty, and a **synthetic stand-in** is used instead: the `carte_verte`
+   layout is reserved (`splits.standin_layouts`), 15 of its documents form
+   `heldout_standin` (annotated blind, reported apart from `heldout_blind`), and the other
+   25 are parked in `reserved_unused`. A reserved layout never reaches GEPA. It measures
+   generalization to an unseen layout, not real-world accuracy. At work: set
+   `standin_layouts: []` and add anonymized company documents, which fill `heldout_blind`.
 2. **Sampling.** The official Qwen non-thinking params stay in YAML (used for P6
    self-consistency). A deterministic `extractor_eval` override (`temperature: 0`,
    `presence_penalty: 0`, fixed `seed`) is used for GEPA scoring, `vex eval` and

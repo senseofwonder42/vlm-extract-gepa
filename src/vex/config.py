@@ -107,6 +107,9 @@ class PathsConfig(_Strict):
 
     raw: Path
     registry: Path
+    manifest: Path
+    specimen_sources: Path
+    synthetic_meta: Path
     splits: Path
     annotations: Path
     inbox: Path
@@ -116,12 +119,22 @@ class PathsConfig(_Strict):
     reports: Path
 
 
+class SynthConfig(_Strict):
+    """Synthetic certificate generation."""
+
+    n: int
+    seed: int
+    scan_fraction: float
+
+
 class SplitsConfig(_Strict):
     """Split assignment parameters."""
 
     seed: int
     heldout_blind_size: int
     pareto_fraction: float
+    standin_layouts: list[str] = []
+    heldout_standin_size: int = 15
 
 
 class MetricConfig(_Strict):
@@ -214,6 +227,7 @@ class Config(_Strict):
     cache: CacheConfig
     budget: BudgetConfig
     paths: PathsConfig
+    synth: SynthConfig
     splits: SplitsConfig
     metric: MetricConfig
     annotation: AnnotationConfig

@@ -81,6 +81,9 @@ budget:
 paths:
   raw: data/raw
   registry: data/registry.jsonl
+  manifest: data/manifest.jsonl
+  specimen_sources: data/specimen_sources.yaml
+  synthetic_meta: data/synthetic_meta/meta.jsonl
   splits: data/splits.yaml
   annotations: data/annotations
   inbox: data/inbox
@@ -89,10 +92,21 @@ paths:
   review_queue: data/review_queue
   reports: reports
 
+synth:
+  n: 200
+  seed: 42
+  scan_fraction: 0.65     # share of documents degraded as scans; the rest stay clean PDFs
+
 splits:
   seed: 42
   heldout_blind_size: 15   # real docs only; capped at half the real docs, minimum 8
   pareto_fraction: 0.4     # share of the non-heldout pool assigned to the gepa_pareto bucket
+  # Mac-only stand-in for held-out evaluation (too few public real specimens, decision
+  # 2026-10-17): synthetic documents of these layouts never enter gepa_train/gepa_pareto.
+  # `heldout_standin_size` of them form `heldout_standin` (annotated blind, reported apart
+  # from heldout_blind); the rest are parked in `reserved_unused`. Set to [] at work.
+  standin_layouts: [carte_verte]
+  heldout_standin_size: 15
 
 metric:
   weights:

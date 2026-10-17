@@ -1,0 +1,78 @@
+# Curated real-specimen sources. Reviewed by a person before anything is downloaded.
+# `vex data fetch-specimens` downloads only entries with status: approved, and
+# refuses pii: suspected. Researched 2026-10-17; see notes for each decision.
+# Review 2026-10-17: only leocare_memo_2026 approved; the other proposals stay unapproved.
+sources:
+  - id: leocare_memo_2026
+    url: https://leocare.eu/fr/wp-content/uploads/2026/02/memo-assure-1-599x1024.jpg
+    page_url: https://leocare.eu/fr/assurance-auto-en-ligne/couverture/contrat/memo-vehicule-assure/
+    source: Leocare (insurer explainer page)
+    licence_note: "© Leocare. Internal research use; not redistributed (raw files are git-ignored)."
+    status: approved
+    pii: none
+    notes: >
+      Mémo Véhicule Assuré mock-up from the insurer's own page. Placeholder holder name
+      ("Cameron Williamson"), plate AB-123-CD, contract ALEO200554-7, validity 19/02/2026-19/03/2026.
+      Carries numbered annotation bubbles (1-4) and a legend below the card.
+
+  - id: lepermislibre_carte_verte_gan
+    url: https://www.lepermislibre.fr/img/blog/carte-verte-a02c0c.jpeg
+    page_url: https://www.lepermislibre.fr/assurance-auto/carte-verte/
+    source: Le Permis Libre (broker/driving-school blog)
+    licence_note: "© Le Permis Libre. Internal research use; not redistributed."
+    status: proposed
+    pii: redacted
+    notes: >
+      Photo of a real green card issued by Gan Assurances (CITROEN). The publisher blurred the
+      holder's name, address, plate and contract number. Hard example: perspective, glare,
+      blurred fields (gold for those must be null).
+
+  - id: commons_permis_carte_grise_verte
+    url: https://upload.wikimedia.org/wikipedia/commons/f/fe/Permis_carte_grise_et_verte_france.JPG
+    page_url: https://commons.wikimedia.org/wiki/File:Permis_carte_grise_et_verte_france.JPG
+    source: Wikimedia Commons
+    licence_note: "Public domain (as declared on Commons)."
+    status: proposed
+    pii: none
+    notes: >
+      Real French green card (2009-2010, Peugeot) photographed under a driving licence and a
+      registration certificate; most fields are hidden. No name visible. Low extraction value,
+      mostly nulls: a hallucination test.
+
+  - id: commons_green_card_de
+    url: https://upload.wikimedia.org/wikipedia/commons/b/bd/Car_insurance_green_card.png
+    page_url: https://commons.wikimedia.org/wiki/File:Car_insurance_green_card.png
+    source: Wikimedia Commons
+    licence_note: "CC0."
+    status: excluded
+    pii: suspected
+    notes: German card; box 9 shows a real person's name (only partly redacted). Excluded per the brief.
+
+  - id: bbaa_description_carte_2024
+    url: https://www.bbaa-bbav.be/documents/Description-Carte_d_Assurance.pdf
+    page_url: https://www.bbaa-bbav.be/
+    source: Bureau Belge des Assureurs Automobiles
+    licence_note: "Official specification; reference only."
+    status: excluded
+    pii: none
+    notes: >
+      Specification of the international card (box by box). Not a certificate: only box
+      snippets. Used as the reference for the synthetic card layouts instead.
+
+  - id: groupama_infographie_fva
+    url: https://www.groupama.fr/cms/images/7awcp71bzphk/5scYYxslCM2cOmvZ51Ouhn/ecf9c2a4ff52398d7dad48434030f72e/vignetteVerte7-police-accident-2025.jpg?w=864&q=80&fm=jpg
+    page_url: https://www.groupama.fr/assurance-auto/conseils/memo-vehicule-assure/
+    source: Groupama
+    licence_note: "© Groupama."
+    status: excluded
+    pii: none
+    notes: Infographic (police check, FVA), not a certificate.
+
+  - id: allianz_attestation_page
+    url: https://www.allianz.fr/assurance-auto/conseils-pratiques/assurance-auto-attestation/
+    page_url: https://www.allianz.fr/assurance-auto/conseils-pratiques/assurance-auto-attestation/
+    source: Allianz
+    licence_note: "-"
+    status: excluded
+    pii: none
+    notes: The site answers 403 to non-browser clients; not scraped.

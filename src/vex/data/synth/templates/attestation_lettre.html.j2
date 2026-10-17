@@ -1,0 +1,34 @@
+{# Free-form certificate written as a letter. #}
+<table style="border-collapse: collapse;"><tr>
+  <td style="width: 60px;"><img src="logo.png" style="width: 52px;"/></td>
+  <td style="width: 230px; font-size: 14px; color: {{ insurer.color }};"><b>{{ insurer.name }}</b><br/>
+    <span style="font-size: 8px; color: #444444;">Service Clients — {{ phone }}</span></td>
+  <td style="width: 200px; font-size: 10px;">
+    {% if show_address %}{{ civility }} {{ holder }}<br/>{{ street }}<br/>{{ postcode }} {{ city }}{% endif %}</td>
+</tr></table>
+<p style="font-size: 10px; text-align: right; margin-top: 14px;">{{ insurer.city }}, le {{ issued }}</p>
+<p style="font-size: 10px;">N° sociétaire : {{ member_number | nobr }}{% if broker %} — Votre conseiller : {{ broker }}{% endif %}</p>
+<h2 style="font-size: 16px; text-align: center; margin-top: 16px;">ATTESTATION D'ASSURANCE AUTOMOBILE</h2>
+<p style="font-size: 11px; margin-top: 12px;">
+  Nous soussignés, {{ insurer.name }}, certifions que {{ civility }} {{ holder }} est titulaire du contrat
+  n° <b>{{ contract | nobr }}</b> garantissant le véhicule de marque <b>{{ vehicles[0].brand | nobr }}</b>, modèle {{ vehicles[0].model }},
+  {% if pending_registration %}en cours d'immatriculation (n° de série {{ vehicles[0].vin }}),{% else %}immatriculé <b>{{ vehicles[0].plate_display | nobr }}</b>,{% endif %}
+  {% if end %}pour la période du {{ start | nobr }} au {{ end | nobr }}.{% else %}à compter du {{ start | nobr }}, par tacite reconduction.{% endif %}
+</p>
+{% if show_guarantees and not two_pages %}
+<p style="font-size: 11px; margin-top: 8px;">Le contrat comprend les garanties suivantes :</p>
+<ul style="font-size: 11px;">{% for g in guarantees %}<li>{{ g }}</li>{% endfor %}</ul>
+{% endif %}
+<p style="font-size: 10px; margin-top: 10px;">La présente attestation ne saurait engager l'assureur en dehors des limites et clauses du contrat auquel elle se réfère.</p>
+<p style="font-size: 10px; margin-top: 24px; text-align: right;">Le Directeur Général</p>
+<p style="font-size: 7px; color: #555555; margin-top: 40px;">{{ insurer.name }} — Société d'assurance mutuelle au capital de {{ capital }} € — {{ rcs }} — Entreprise régie par le Code des assurances.</p>
+{% if two_pages %}
+<!--PAGEBREAK-->
+<h3 style="font-size: 13px;">Conditions particulières — contrat n° {{ contract | nobr }}</h3>
+<p style="font-size: 10px;">Véhicule : {{ vehicles[0].brand | nobr }} {{ vehicles[0].model }} — VIN {{ vehicles[0].vin }}</p>
+{% if show_guarantees %}
+<p style="font-size: 11px;">Garanties souscrites :</p>
+<ul style="font-size: 11px;">{% for g in guarantees %}<li>{{ g }}</li>{% endfor %}</ul>
+{% endif %}
+<p style="font-size: 9px;">Les franchises applicables figurent au tableau des garanties remis lors de la souscription.</p>
+{% endif %}

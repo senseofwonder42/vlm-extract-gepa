@@ -1,0 +1,30 @@
+{# Legacy green card (until 2024) with the detachable windscreen sticker ("papillon"). #}
+{% set cell = "border: 1px solid #1b5e20; padding: 4px; font-size: 9px; color: #1b4d1e;" %}
+<div style="background-color: #cfe8d4;">
+<table style="border-collapse: collapse;">
+  <tr>
+    <td style="{{ cell }} width: 250px;">1. INTERNATIONAL MOTOR INSURANCE CARD<br/>CARTE INTERNATIONALE D'ASSURANCE AUTOMOBILE</td>
+    <td style="{{ cell }} width: 240px;">2. ÉMISE AVEC L'AUTORISATION DU BUREAU CENTRAL FRANÇAIS</td>
+  </tr>
+  <tr>
+    <td style="{{ cell }}">3. VALABLE DU <span style="font-size: 12px;">{{ start_parts[0] }} {{ start_parts[1] }} {{ start_parts[2] }}</span>
+      AU <span style="font-size: 12px;">{{ end_parts[0] }} {{ end_parts[1] }} {{ end_parts[2] }}</span><br/>(Jour Mois Année — ces deux dates comprises)</td>
+    <td style="{{ cell }}">4. Code pays / Code assureur / Numéro<br/><span style="font-size: 12px;">F &#160; {{ insurer.code | nobr }} &#160; {{ contract | nobr }}</span></td>
+  </tr>
+  <tr>
+    <td style="{{ cell }}">5. N° d'immatriculation (ou à défaut) N° du châssis ou du moteur<br/><span style="font-size: 12px;">{{ vehicles[0].plate_display | nobr }}</span></td>
+    <td style="{{ cell }}">6. Catégorie : A &#160;&#160; 7. Marque du véhicule : <span style="font-size: 12px;">{{ vehicles[0].brand | upper | nobr }}</span></td>
+  </tr>
+  <tr>
+    <td style="{{ cell }}">8. Nom et adresse de l'assuré<br/><span style="font-size: 11px;">{{ civility }} {{ holder }}<br/>{{ street }}<br/>{{ postcode }} {{ city }}</span></td>
+    <td style="{{ cell }}">9. Cette carte a été délivrée par :<br/><img src="logo.png" style="width: 28px;"/> <span style="font-size: 11px;">{{ insurer.name }}</span><br/>
+      <span style="font-size: 7px;">{{ rcs }}</span><br/>10. Signature de l'assureur</td>
+  </tr>
+</table>
+</div>
+<p style="font-size: 8px;">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</p>
+<div style="background-color: #cfe8d4; border: 1px solid #1b5e20; padding: 6px;">
+  <p style="font-size: 9px; color: #1b4d1e;"><b>CERTIFICAT D'ASSURANCE</b> — à apposer sur le pare-brise</p>
+  <p style="font-size: 11px;">{{ insurer.name }} — Code {{ insurer.code | nobr }}</p>
+  <p style="font-size: 11px;">Du {{ start | nobr }} au {{ end | nobr }} — {{ vehicles[0].plate_display | nobr }}</p>
+</div>

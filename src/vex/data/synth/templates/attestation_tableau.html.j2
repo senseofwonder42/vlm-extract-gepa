@@ -1,0 +1,42 @@
+{# Form-style certificate: label/value table, guarantees checklist, sometimes 2 vehicles or 2 pages. #}
+{% set label = "border: 1px solid #888888; padding: 4px; font-size: 9px; background-color: #eeeeee;" %}
+{% set value = "border: 1px solid #888888; padding: 4px; font-size: 11px;" %}
+<table style="border-collapse: collapse;"><tr>
+  <td style="width: 60px;"><img src="logo.png" style="width: 44px;"/></td>
+  <td style="width: 430px; font-size: 15px; color: {{ insurer.color }};"><b>{{ insurer.name | upper }}</b></td>
+</tr></table>
+<h2 style="font-size: 15px; text-align: center; margin-top: 10px;">ATTESTATION D'ASSURANCE — VÉHICULE TERRESTRE À MOTEUR</h2>
+<table style="border-collapse: collapse; margin-top: 8px;">
+  <tr><td style="{{ label }} width: 170px;">Souscripteur</td><td style="{{ value }} width: 320px;">{{ civility }} {{ holder }}</td></tr>
+  <tr><td style="{{ label }}">Adresse</td><td style="{{ value }}">{{ street }}, {{ postcode }} {{ city }}</td></tr>
+  <tr><td style="{{ label }}">N° de contrat</td><td style="{{ value }}">{{ contract | nobr }}</td></tr>
+  <tr><td style="{{ label }}">N° de sociétaire</td><td style="{{ value }}">{{ member_number | nobr }}</td></tr>
+  {% if show_code %}<tr><td style="{{ label }}">Code assureur</td><td style="{{ value }}">{{ insurer.code | nobr }}</td></tr>{% endif %}
+  <tr><td style="{{ label }}">Période de validité</td><td style="{{ value }}">du {{ start | nobr }} au {{ end | nobr }}</td></tr>
+</table>
+<p style="font-size: 10px; margin-top: 10px;"><b>Véhicule{% if vehicles | length > 1 %}s{% endif %} assuré{% if vehicles | length > 1 %}s{% endif %}</b></p>
+<table style="border-collapse: collapse;">
+  <tr><td style="{{ label }} width: 25px;">N°</td><td style="{{ label }} width: 150px;">Marque / modèle</td>
+      <td style="{{ label }} width: 110px;">Immatriculation</td><td style="{{ label }} width: 150px;">N° de série (VIN)</td></tr>
+  {% for v in vehicles %}
+  <tr><td style="{{ value }}">{{ loop.index }}</td><td style="{{ value }}">{{ v.brand | nobr }} {{ v.model }}</td>
+      <td style="{{ value }}">{{ v.plate_display | nobr }}</td><td style="{{ value }} font-size: 8px;">{{ v.vin }}</td></tr>
+  {% endfor %}
+</table>
+{% if not two_pages %}
+<p style="font-size: 10px; margin-top: 10px;"><b>Garanties</b></p>
+<table style="border-collapse: collapse;">
+  {% for g in guarantees %}<tr><td style="{{ value }} width: 30px;">[X]</td><td style="{{ value }} width: 300px;">{{ g }}</td></tr>{% endfor %}
+  {% for g in unchecked %}<tr><td style="{{ value }} width: 30px;">[ &#160;]</td><td style="{{ value }} width: 300px;">{{ g }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+<p style="font-size: 9px; margin-top: 10px;">Document établi le {{ issued }}{% if broker %} par votre intermédiaire {{ broker }}{% endif %}.</p>
+<p style="font-size: 7px; color: #555555;">{{ insurer.name }} — capital {{ capital }} € — {{ rcs }}</p>
+{% if two_pages %}
+<!--PAGEBREAK-->
+<h3 style="font-size: 13px;">Annexe — Tableau des garanties (contrat {{ contract | nobr }})</h3>
+<table style="border-collapse: collapse;">
+  {% for g in guarantees %}<tr><td style="{{ value }} width: 30px;">[X]</td><td style="{{ value }} width: 300px;">{{ g }}</td></tr>{% endfor %}
+  {% for g in unchecked %}<tr><td style="{{ value }} width: 30px;">[ &#160;]</td><td style="{{ value }} width: 300px;">{{ g }}</td></tr>{% endfor %}
+</table>
+{% endif %}

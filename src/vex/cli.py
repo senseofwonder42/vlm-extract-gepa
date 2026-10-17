@@ -17,6 +17,10 @@ import yaml
 from loguru import logger
 from pydantic import ValidationError
 
+from vex.data.registry import load_registry, register
+from vex.data.specimens import USER_AGENT, fetch_specimens
+from vex.data.splits import assign_splits, load_splits, save_splits
+from vex.data.synth.generator import generate
 from vex.config import DEFAULT_CONFIG_PATH, Config, RoleName, Settings, config_hash, load_config
 from vex.extract import extract_document
 from vex.llm.client import OpenRouterClient
@@ -29,7 +33,9 @@ app = typer.Typer(no_args_is_help=True, add_completion=False, help=__doc__)
 config_app = typer.Typer(no_args_is_help=True, help="Inspect the configuration.")
 prompt_app = typer.Typer(no_args_is_help=True, help="Manage candidate prompts.")
 app.add_typer(config_app, name="config")
+data_app = typer.Typer(no_args_is_help=True, help="Build the document dataset.")
 app.add_typer(prompt_app, name="prompt")
+app.add_typer(data_app, name="data")
 
 
 class State:
@@ -147,3 +153,49 @@ def doctor() -> None:
                 f"structured_outputs on {structured}/{len(endpoints)}; unsupported somewhere: {missing or '-'}"
             )
     raise typer.Exit(0 if ok else 1)
+
+
+@data_app.command("fetch-specimens")
+def data_fetch_specimens(
+    delay: Annotated[float, typer.Option(help="Seconds between two downloads.")] = 2.0,
+) -> None:
+    """Download approved real specimens (robots.txt respected) and update the manifest."""
+    paths = state.config.paths
+    with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=60, follow_redirects=True) as client:
+        new = fetch_specimens(paths.specimen_sources, paths.raw / "real", paths.manifest, client, delay_s=delay)
+    typer.echo(f"{len(new)} new specimen(s) downloaded")
+
+
+@data_app.command("synth")
+def data_synth(
+    overwrite: Annotated[bool, typer.Option(help="Replace existing synthetic files.")] = False,
+) -> None:
+    """Generate the seeded synthetic certificates (`synth.n`, `synth.seed` in YAML)."""
+    synth, paths = state.config.synth, state.config.paths
+    try:
+        files = generate(synth.n, synth.seed, paths.raw / "synthetic", paths.synthetic_meta,
+                         scan_fraction=synth.scan_fraction, overwrite=overwrite)
+    except FileExistsError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(f"{len(files)} synthetic document(s) in {paths.raw / 'synthetic'}")
+
+
+@data_app.command("register")
+def data_register() -> None:
+    """Add new files under data/raw/{real,synthetic} to the registry."""
+    new = register(state.config.paths.raw, state.config.paths.registry)
+    typer.echo(f"{len(new)} new document(s) registered")
+
+
+@data_app.command("split")
+def data_split() -> None:
+    """Assign unassigned documents to splits; existing assignments never move."""
+    paths = state.config.paths
+    try:
+        splits = assign_splits(load_registry(paths.registry), load_splits(paths.splits), state.config.splits)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    save_splits(splits, paths.splits)
+    typer.echo(f"heldout_blind={len(splits.heldout_blind)} heldout_standin={len(splits.heldout_standin)} "
+               f"reserved_unused={len(splits.reserved_unused)} gepa_train={len(splits.gepa_train)} "
+               f"gepa_pareto={len(splits.gepa_pareto)} -> {paths.splits}")
