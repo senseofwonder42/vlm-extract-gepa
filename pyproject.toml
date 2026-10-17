@@ -42,4 +42,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = ["live: makes a real OpenRouter call (opt-in: pytest -m live)"]
 addopts = "-m 'not live'"
-filterwarnings = ["ignore:builtin type .* has no __module__ attribute:DeprecationWarning"]
+filterwarnings = [
+    "ignore:builtin type .* has no __module__ attribute:DeprecationWarning",
+    "ignore:`pydantic.config.Extra` is deprecated:DeprecationWarning",  # kili 2.142.1 uses Pydantic v1 API
+]

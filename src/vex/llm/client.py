@@ -149,6 +149,7 @@ class OpenRouterClient:
         self._cache = DiskCache(config.cache.dir) if (config.cache.enabled and use_cache) else None
         self._semaphore = asyncio.Semaphore(config.client.concurrency)
         self._paths: dict[RoleName, StructuredPath] = {}
+        self._paths_lock = asyncio.Lock()  # concurrent first calls probe the endpoints once
         self._http = httpx.AsyncClient(
             base_url=config.client.base_url,
             headers={"Authorization": f"Bearer {api_key.get_secret_value()}"},
@@ -273,17 +274,18 @@ class OpenRouterClient:
         Returns:
             `json_schema` or `prompt`.
         """
-        if role in self._paths:
-            return self._paths[role]
-        role_config = self.config.role(role)
-        path: StructuredPath
-        if role_config.structured_output != "auto":
-            path = role_config.structured_output
-        else:
-            path = await self._probe_structured_support(role_config.model, role_config.extra_body.get("provider"))
-        logger.info("Structured output for role {} ({}): {}", role, role_config.model, path)
-        self._paths[role] = path
-        return path
+        async with self._paths_lock:
+            if role in self._paths:
+                return self._paths[role]
+            role_config = self.config.role(role)
+            path: StructuredPath
+            if role_config.structured_output != "auto":
+                path = role_config.structured_output
+            else:
+                path = await self._probe_structured_support(role_config.model, role_config.extra_body.get("provider"))
+            logger.info("Structured output for role {} ({}): {}", role, role_config.model, path)
+            self._paths[role] = path
+            return path
 
     async def _probe_structured_support(self, model: str, provider: object) -> StructuredPath:
         try:

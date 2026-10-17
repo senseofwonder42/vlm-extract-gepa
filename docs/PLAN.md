@@ -263,6 +263,15 @@ note in the commit message body, and **one local commit**. No push.
 
 ### P4 — Annotation store and backends
 - `vex eval --candidate X --split gepa_train|gepa_pareto` (moved from P3; refuses held-out splits).
+- **As built:** `vex bootstrap --round N` is one stateful command. The first call selects,
+  pre-annotates and pushes; later calls pull and report progress, and once the round is
+  complete they propose the rewrite (diff + confirmation, `--yes` to skip). The candidate for
+  round N defaults to `bootstrap-r<N-1>`. Also `vex annotate push-blind` (held-out + stand-in,
+  round 0, no predictions) and `vex annotate pull --round N`. Local inbox files are named
+  by the full doc_id. The store is append-only with an idempotent `append_new`, because Kili
+  re-returns every label on each pull. Kili checklist: `docs/kili_uncertainties.md`.
+- **Live check (scratch dirs, real store left empty):** round-1 push pre-annotated 5 docs for
+  $0.0047, the real Leocare Mémo first and correctly read.
 - `store.py`: append-only JSONL (§5). `gold(doc_id)` = latest record with
   `status ∈ {reviewed, blind}`. `pre_annotated` is never returned as gold (tested).
 - `LocalBackend`: `push` writes `data/inbox/round_<N>/<doc_id>.json` (prefilled, or empty

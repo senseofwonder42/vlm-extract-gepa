@@ -167,3 +167,20 @@ async def test_api_key_is_sent_only_as_header(make_client, fake_openrouter):
         await client.complete("extractor", MESSAGES)
         assert client._http.headers["authorization"] == f"Bearer {FAKE_KEY.get_secret_value()}"
     assert FAKE_KEY.get_secret_value() not in json.dumps(fake_openrouter.chat_requests)
+
+
+async def test_concurrent_first_calls_probe_endpoints_once(config):
+    probes = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal probes
+        if request.url.path.endswith("/endpoints"):
+            probes += 1
+            return httpx.Response(200, json={"data": {"endpoints": []}})
+        return httpx.Response(200, json=chat_response(json.dumps(VALID_VALUES)))
+
+    async with OpenRouterClient(config, FAKE_KEY, CostTracker(5), use_cache=False,
+                                transport=httpx.MockTransport(handler)) as client:
+        await asyncio.gather(*(client.complete_json("extractor", [{"role": "user", "content": str(i)}],
+                                                    AttestationAuto, strict_json_schema()) for i in range(5)))
+    assert probes == 1

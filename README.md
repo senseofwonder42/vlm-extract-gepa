@@ -51,6 +51,29 @@ committed, so `fetch-specimens` + `synth` rebuild the same files byte-for-byte.
 On the Mac, the `carte_verte` layout is reserved as a held-out stand-in
 (`splits.standin_layouts`); at work, set it to `[]` and add real documents.
 
+## Annotation rounds
+
+```bash
+uv run vex annotate push-blind        # held-out (+ Mac stand-in) docs, no predictions, round 0
+uv run vex annotate pull --round 0    # import the blind annotations once done
+
+uv run vex bootstrap --round 1        # 5 docs: pre-annotate (Haiku) + push
+#   ... correct them (local: edit data/inbox/round_1/*.json, set "_done": true) ...
+uv run vex bootstrap --round 1        # pull; when complete, propose a rewrite of the
+                                      # field descriptions → diff → confirm → prompts/bootstrap-r1.*.json
+uv run vex bootstrap --round 2        # 10 docs, starts from bootstrap-r1
+uv run vex bootstrap --round 3        # 15 docs
+
+uv run vex eval --split gepa_pareto --candidate prompts/bootstrap-r3.<hash>.json
+```
+
+`annotation.backend: local` (default, this Mac) uses editable JSON files in
+`data/inbox/`. At work, set `annotation.backend: kili` and fill `KILI_API_KEY` /
+`KILI_API_ENDPOINT` in `.env`. The Kili backend has **not** been run against a
+live instance: read [docs/kili_uncertainties.md](docs/kili_uncertainties.md) first.
+Every annotation lands in `data/annotations/round_<N>.jsonl`, the single source
+of truth. Only `reviewed` and `blind` records count as gold.
+
 ## Tests
 
 ```bash
