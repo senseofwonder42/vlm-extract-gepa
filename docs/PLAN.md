@@ -249,11 +249,20 @@ note in the commit message body, and **one local commit**. No push.
   `fuzzy_fields`; set-F1 for `garanties`; error types; diff string
   `"[wrong_value] immatriculation: expected 'AB-123-CD' got 'AB-123-CO'"`.
 - `report.py`: weighted doc score, per-field accuracy, error-type breakdown, JSON + table.
-- **CLI:** `vex eval --candidate X --split gepa_pareto` (refuses `heldout_blind`, see Q5).
+- **CLI (changed in P3):** `vex data sanity --n 20 [--candidate X]` scores a candidate against
+  synthetic_meta on GEPA-bucket synthetic docs only (sanity, never labels; `vex.data.sanity` is
+  synthetic_meta's only reader, guarded by a test). `vex eval` needs gold from the annotation
+  store, so it moves to P4.
+- **Fuzzy matching:** max(`token_sort_ratio`, `ratio` with spaces removed) on normalized text,
+  so a whitespace-only difference ("Pottiernec" / "Pottier nec") is not an error.
+- **Live sanity (seed prompt, 20 docs, $0.028):** 98.6% weighted. All 4 errors are `garanties`
+  hallucinations on Mémos: the "ASSISTANCE 24H/24" phone block read as a guarantee, a real
+  ambiguity for GEPA to fix.
 - **Tests:** a table of ~60 normalization cases, every error type, weights, set-F1 edge
   cases (both null = 1, gold null + pred list = hallucination), parse-failure → all omission.
 
 ### P4 — Annotation store and backends
+- `vex eval --candidate X --split gepa_train|gepa_pareto` (moved from P3; refuses held-out splits).
 - `store.py`: append-only JSONL (§5). `gold(doc_id)` = latest record with
   `status ∈ {reviewed, blind}`. `pre_annotated` is never returned as gold (tested).
 - `LocalBackend`: `push` writes `data/inbox/round_<N>/<doc_id>.json` (prefilled, or empty

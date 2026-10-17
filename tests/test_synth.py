@@ -145,11 +145,19 @@ def test_scan_fraction_extremes(tmp_path):
 
 
 def test_synthetic_meta_is_only_touched_by_the_generator():
-    """synthetic_meta must never become labels: only `vex data synth` touches its path."""
+    """synthetic_meta must never become labels.
+
+    Only two CLI commands touch its path: `vex data synth` (writes it) and
+    `vex data sanity` (hands it to vex.data.sanity, its only reader). And no
+    module but the CLI may import the sanity module.
+    """
     users = sorted(p.name for p in SRC.rglob("*.py") if ".synthetic_meta" in p.read_text())
     assert users == ["cli.py"]
-    cli_lines = [line for line in (SRC / "cli.py").read_text().splitlines() if ".synthetic_meta" in line]
-    assert len(cli_lines) == 1 and "generate(" in cli_lines[0]
+    cli_lines = [line.strip() for line in (SRC / "cli.py").read_text().splitlines() if ".synthetic_meta" in line]
+    assert len(cli_lines) == 2
+    assert "generate(" in cli_lines[0] and "run_sanity(" in cli_lines[1]
+    importers = sorted(p.name for p in SRC.rglob("*.py") if "vex.data.sanity" in p.read_text())
+    assert importers == ["cli.py"]
 
 
 def test_generation_is_identical_across_processes(tmp_path):

@@ -18,6 +18,7 @@ from loguru import logger
 from pydantic import ValidationError
 
 from vex.data.registry import load_registry, register
+from vex.data.sanity import eligible_documents, run_sanity
 from vex.data.specimens import USER_AGENT, fetch_specimens
 from vex.data.splits import assign_splits, load_splits, save_splits
 from vex.data.synth.generator import generate
@@ -25,6 +26,7 @@ from vex.config import DEFAULT_CONFIG_PATH, Config, RoleName, Settings, config_h
 from vex.extract import extract_document
 from vex.llm.client import OpenRouterClient
 from vex.llm.cost import CostTracker
+from vex.metric.report import build_report
 from vex.logs import setup_logging
 from vex.prompt import load_candidate, save_candidate, seed_candidate
 from vex.runs import create_run_dir
@@ -199,3 +201,36 @@ def data_split() -> None:
     typer.echo(f"heldout_blind={len(splits.heldout_blind)} heldout_standin={len(splits.heldout_standin)} "
                f"reserved_unused={len(splits.reserved_unused)} gepa_train={len(splits.gepa_train)} "
                f"gepa_pareto={len(splits.gepa_pareto)} -> {paths.splits}")
+
+
+@data_app.command("sanity")
+def data_sanity(
+    n: Annotated[int, typer.Option(help="Number of synthetic documents to score.")] = 20,
+    candidate_path: Annotated[
+        Path | None, typer.Option("--candidate", help="Saved candidate JSON (default: seed).")
+    ] = None,
+    seed: Annotated[int, typer.Option(help="Sampling seed.")] = 0,
+) -> None:
+    """Score a candidate on synthetic docs against generator values (sanity only, never labels)."""
+    paths = state.config.paths
+    splits = load_splits(paths.splits)
+    if splits is None:
+        raise typer.BadParameter("No splits yet: run `vex data register` and `vex data split` first.")
+    documents = eligible_documents(load_registry(paths.registry), splits)
+    candidate = load_candidate(candidate_path) if candidate_path else seed_candidate()
+    run_dir = create_run_dir(state.config, "sanity")
+    tracker = CostTracker(state.config.budget.max_usd)
+
+    async def run() -> list:
+        async with _make_client(tracker) as client:
+            return await run_sanity(client, candidate, documents, paths.synthetic_meta, n, seed)
+
+    scores = asyncio.run(run())
+    report = build_report(scores)
+    (run_dir / "report.json").write_text(json.dumps(report.to_dict(), indent=2), encoding="utf-8")
+    (run_dir / "documents.json").write_text(
+        json.dumps([asdict(s) for s in scores], indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    (run_dir / "cost.json").write_text(json.dumps(tracker.summary(), indent=2), encoding="utf-8")
+    typer.echo(report.table())
+    typer.echo(f"cost ${tracker.total_usd:.4f} — details in {run_dir}")

@@ -14,8 +14,10 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, JsonValue, SecretStr
+from pydantic import BaseModel, ConfigDict, JsonValue, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from vex.schema import FIELD_NAMES
 
 DEFAULT_CONFIG_PATH = Path("configs/default.yaml")
 
@@ -143,6 +145,17 @@ class MetricConfig(_Strict):
     weights: dict[str, float]
     fuzzy_fields: list[str]
     fuzzy_threshold: float
+
+    @model_validator(mode="after")
+    def _fields_match_schema(self) -> "MetricConfig":
+        """Require one positive weight per schema field and known fuzzy fields."""
+        if set(self.weights) != set(FIELD_NAMES):
+            raise ValueError(f"metric.weights must list exactly the schema fields {list(FIELD_NAMES)}")
+        if any(weight <= 0 for weight in self.weights.values()):
+            raise ValueError("metric.weights must be positive")
+        if unknown := set(self.fuzzy_fields) - set(FIELD_NAMES):
+            raise ValueError(f"metric.fuzzy_fields has unknown fields: {sorted(unknown)}")
+        return self
 
 
 class KiliConfig(_Strict):

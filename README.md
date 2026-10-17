@@ -41,6 +41,10 @@ uv run vex data register          # add new files to data/registry.jsonl (doc_id
 uv run vex data split             # frozen assignment in data/splits.yaml
 ```
 
+```bash
+uv run vex data sanity --n 20     # score the seed prompt against generator values (sanity only)
+```
+
 Raw documents are git-ignored. The manifest, registry, splits and the
 generator's `synthetic_meta` (used only by tests and sanity checks, never as labels) are
 committed, so `fetch-specimens` + `synth` rebuild the same files byte-for-byte.
