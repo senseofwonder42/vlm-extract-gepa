@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Data that must never be committed
+data/raw/
+data/inbox/
+.cache/
+runs/
+*.bin
+
+# OS
+.DS_Store

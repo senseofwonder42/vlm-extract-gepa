@@ -1,0 +1,39 @@
+[project]
+name = "vex"
+version = "0.1.0"
+description = "Extract structured fields from French motor insurance certificates with a VLM, and optimize the prompt with GEPA."
+readme = "README.md"
+authors = [
+    { name = "afleuren", email = "antoine.j.fleurentin@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.0",
+    "pymupdf>=1.28.2",
+    "pyyaml>=6.0.3",
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+vex = "vex.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["live: makes a real OpenRouter call (opt-in: pytest -m live)"]
+addopts = "-m 'not live'"
+filterwarnings = ["ignore:builtin type .* has no __module__ attribute:DeprecationWarning"]

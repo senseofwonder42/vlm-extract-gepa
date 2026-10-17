@@ -1,0 +1,151 @@
+# vex default configuration. Every key can be overridden from the CLI:
+#   uv run vex --set models.extractor.params.temperature=0.2 <command>
+# Secrets never go here: they are read from .env (see .env.example).
+
+models:
+  extractor:
+    model: qwen/qwen3.8-27b
+    structured_output: auto        # auto | json_schema | prompt
+    # Official NON-thinking sampling parameters for Qwen3.8-27B, from the model card
+    # https://huggingface.co/Qwen/Qwen3.8-27B (fetched 2026-10-17).
+    # Used as-is for self-consistency sampling (P6). GEPA scoring uses extractor_eval below.
+    # The card also recommends min_p: 0.0. That is the neutral (disabled) value, and
+    # Parasail does not accept `min_p`: with require_parameters it makes routing fail
+    # (HTTP 404, verified 2026-10-17). So it is omitted. Check with `vex doctor`.
+    params:
+      temperature: 0.7
+      top_p: 0.8
+      top_k: 20
+      presence_penalty: 1.5
+      repetition_penalty: 1.0
+      max_tokens: 1500
+      seed: 0
+    extra_body:
+      # OpenRouter enables reasoning by default for this model (effort "xhigh").
+      # effort "none" disables it: verified live on 2026-10-17 (reasoning_tokens == 0).
+      reasoning: {effort: none}
+      # Pin one provider: 20 providers serve this model (fp4..bf16), outputs differ.
+      # require_parameters: never route to a provider that ignores response_format.
+      provider: {order: [parasail], allow_fallbacks: false, require_parameters: true}
+  # Deterministic override merged over `extractor`. Used for GEPA scoring, `vex eval`,
+  # held-out scoring and `vex extract` by default.
+  extractor_eval:
+    params: {temperature: 0.0, presence_penalty: 0.0}
+    extra_body: {}
+  preannotator:
+    model: anthropic/claude-haiku-5.5
+    structured_output: auto
+    params: {max_tokens: 8000}     # Haiku 5.5 does not accept temperature / top_p
+    extra_body:
+      reasoning: {effort: medium}  # adaptive: thinks only when the input needs it
+      provider: {require_parameters: true}
+  diagnostic:
+    model: anthropic/claude-haiku-5.5
+    structured_output: auto
+    params: {max_tokens: 8000}
+    extra_body:
+      reasoning: {effort: medium}
+      provider: {require_parameters: true}
+  reflection:
+    model: anthropic/claude-haiku-5.5
+    structured_output: auto
+    params: {max_tokens: 12000}
+    extra_body:
+      reasoning: {effort: medium}
+      provider: {require_parameters: true}
+
+# Only used when a response carries no usage.cost (OpenRouter normally returns it).
+pricing_fallback_usd_per_m:
+  qwen/qwen3.8-27b: {input: 0.24, output: 2.20}
+  anthropic/claude-haiku-5.5: {input: 0.10, output: 0.50}
+
+render:
+  dpi: 150
+  max_pages: 3
+
+client:
+  base_url: https://openrouter.ai/api/v1
+  concurrency: 8
+  max_retries: 5
+  backoff_base_s: 1.0
+  backoff_max_s: 60.0
+  timeout_s: 120.0
+
+cache:
+  enabled: true
+  dir: .cache/llm
+
+budget:
+  max_usd: 5.0
+
+paths:
+  raw: data/raw
+  registry: data/registry.jsonl
+  splits: data/splits.yaml
+  annotations: data/annotations
+  inbox: data/inbox
+  prompts: prompts
+  runs: runs
+  review_queue: data/review_queue
+  reports: reports
+
+splits:
+  seed: 42
+  heldout_blind_size: 15   # real docs only; capped at half the real docs, minimum 8
+  pareto_fraction: 0.4     # share of the non-heldout pool assigned to the gepa_pareto bucket
+
+metric:
+  weights:
+    assureur: 1.0
+    numero_contrat: 2.0
+    nom_souscripteur: 1.0
+    adresse_souscripteur: 0.5
+    immatriculation: 3.0
+    marque_vehicule: 0.5
+    date_debut_validite: 2.0
+    date_fin_validite: 2.0
+    code_assureur: 1.0
+    garanties: 1.0
+  fuzzy_fields: [assureur, nom_souscripteur, adresse_souscripteur]
+  fuzzy_threshold: 90
+
+annotation:
+  backend: local           # local | kili
+  kili:
+    project_id: null
+    project_title: "vex - attestations auto"
+    model_name_prefix: vex
+
+bootstrap:
+  batch_sizes: [5, 10, 15]
+
+gepa:
+  seed: 0
+  max_metric_calls: 300
+  max_reflection_cost_usd: 1.0
+  reflection_minibatch_size: 3
+  candidate_selection_strategy: pareto
+  module_selector: error_driven   # error_driven | round_robin | all
+  use_merge: true
+  max_merge_invocations: 5
+  skip_perfect_score: true
+  cache_evaluation: true
+  heldout_top_k: 3
+  reflection_images: false
+
+active:
+  weights:
+    pareto_disagreement: 0.35
+    self_consistency: 0.25
+    rules: 0.2
+    verifier: 0.2
+  top_k_candidates: 3
+  self_consistency: {n: 3, temperature: 0.9}
+  verifier_shortlist: 40
+  diversity: {enabled: true, n_clusters: 8, embedder: auto}
+  random_confident_fraction: 0.15
+  batch_size: 20
+
+tracking:
+  plateau_delta: 0.01
+  plateau_rounds: 2
